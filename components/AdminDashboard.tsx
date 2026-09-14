@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BRAND, TAX_LABEL, formatCents } from "@/lib/config";
 import { orderItemsSummary } from "@/lib/order";
@@ -54,6 +54,16 @@ export default function AdminDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>("cards");
+
+  const stats = useMemo(() => {
+    const activeOrders = orders.filter((o) => o.status !== "cancelled" && o.status !== "expired");
+    const paidOrders = orders.filter((o) => o.status === "paid");
+    return {
+      totalOrders: orders.length,
+      totalCookies: activeOrders.reduce((sum, o) => sum + o.total_cookies, 0),
+      totalRevenueCents: paidOrders.reduce((sum, o) => sum + o.total_cents, 0),
+    };
+  }, [orders]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -121,6 +131,17 @@ export default function AdminDashboard() {
           </button>
         </div>
       </div>
+      {!loading && (
+        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <StatTile label="Total orders" value={String(stats.totalOrders)} />
+          <StatTile
+            label="Total cookies"
+            value={stats.totalCookies.toLocaleString("en-CA")}
+            hint="Paid + pending — excludes cancelled/expired"
+          />
+          <StatTile label="Total revenue" value={formatCents(stats.totalRevenueCents)} hint="Paid orders only" />
+        </div>
+      )}
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="inline-flex rounded-lg border p-1 text-sm" style={{ borderColor: BRAND.colors.light }}>
@@ -340,9 +361,8 @@ function OrderTable({
 function Th({ children, align = "left" }: { children: React.ReactNode; align?: "left" | "right" }) {
   return (
     <th
-      className={`whitespace-nowrap px-3 py-2 text-xs font-semibold uppercase tracking-wide text-stone-500 ${
-        align === "right" ? "text-right" : "text-left"
-      }`}
+      className={`whitespace-nowrap px-3 py-2 text-xs font-semibold uppercase tracking-wide text-stone-500 ${align === "right" ? "text-right" : "text-left"
+        }`}
     >
       {children}
     </th>
@@ -362,5 +382,17 @@ function Td({
     <td className={`px-3 py-2 align-top ${align === "right" ? "text-right" : "text-left"} ${className}`}>
       {children}
     </td>
+  );
+}
+
+function StatTile({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div className="rounded-xl2 border bg-white p-4 shadow-card" style={{ borderColor: BRAND.colors.light }}>
+      <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">{label}</p>
+      <p className="mt-1 font-display text-2xl font-semibold" style={{ color: BRAND.colors.dark }}>
+        {value}
+      </p>
+      {hint && <p className="mt-1 text-xs text-stone-400">{hint}</p>}
+    </div>
   );
 }
