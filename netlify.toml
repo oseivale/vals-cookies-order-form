@@ -1,0 +1,10 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Stripe needs the raw request body to verify webhook signatures. Netlify's
+# Next.js runtime handles this correctly for App Router route handlers by
+# default — no extra config needed here, just don't add a body-parser.

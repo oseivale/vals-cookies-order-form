@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand-accent: #fa945d;
+  --brand-light: #eac394;
+  --brand-dark: #996236;
+}
+
+body {
+  background: linear-gradient(180deg, #fdf6ee 0%, #fbeee0 100%);
+  color: #3a332b;
+}
+
+.font-display {
+  font-family: "Fraunces", Georgia, "Times New Roman", serif;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.25s ease-out;
+}
