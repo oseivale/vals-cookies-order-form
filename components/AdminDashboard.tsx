@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BRAND, TAX_LABEL, formatCents } from "@/lib/config";
+import { BRAND, TAX_LABEL, formatCents, getPickupLocation } from "@/lib/config";
 import { orderItemsSummary } from "@/lib/order";
 import type { OrderItem } from "@/lib/order";
 
@@ -17,6 +17,7 @@ export interface AdminOrder {
   subtotal_cents: number;
   tax_cents: number;
   total_cents: number;
+  pickup_location: string;
   payment_method: "stripe" | "etransfer";
   status: string;
 }
@@ -231,8 +232,8 @@ function OrderCard({
           <span className="text-xs text-stone-400">
             ({formatCents(order.subtotal_cents)} + {TAX_LABEL} {formatCents(order.tax_cents)})
           </span>{" "}
-          • {order.payment_method === "stripe" ? "Card" : "e-Transfer"} • {new Date(order.created_at).toLocaleString()}
-        </span>
+          • Pickup: {getPickupLocation(order.pickup_location)?.name ?? order.pickup_location} •{" "}
+          {order.payment_method === "stripe" ? "Card" : "e-Transfer"} • {new Date(order.created_at).toLocaleString()}        </span>
 
         {order.status === "pending_etransfer" && (
           <OrderActions orderId={order.id} actioningId={actioningId} onAct={onAct} />
@@ -298,6 +299,7 @@ function OrderTable({
             <Th align="right">Subtotal</Th>
             <Th align="right">{TAX_LABEL}</Th>
             <Th align="right">Total</Th>
+            <Th>Pickup</Th>
             <Th>Payment</Th>
             <Th>Status</Th>
             <Th>Placed</Th>
@@ -331,6 +333,7 @@ function OrderTable({
               <Td align="right" className="font-semibold text-stone-800">
                 {formatCents(order.total_cents)}
               </Td>
+              <Td>{getPickupLocation(order.pickup_location)?.name ?? order.pickup_location}</Td>
               <Td>{order.payment_method === "stripe" ? "Card" : "e-Transfer"}</Td>
               <Td>
                 <span

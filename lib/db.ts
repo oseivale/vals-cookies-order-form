@@ -61,6 +61,7 @@ export interface OrderRow {
   tax_cents: number;
   total_cents: number;
   week_start: string;
+  pickup_location: string;
   payment_method: "stripe" | "etransfer";
   status: OrderStatus;
   stripe_session_id: string | null;
@@ -123,6 +124,7 @@ export interface InsertOrderInput {
   taxCents: number;
   totalCents: number;
   weekStart: string;
+  pickupLocation: string;
   paymentMethod: "stripe" | "etransfer";
   status: OrderStatus;
 }
@@ -132,8 +134,8 @@ export async function insertOrder(client: PoolClient, input: InsertOrderInput): 
     `INSERT INTO orders (
        id, customer_name, customer_email, customer_phone, customer_notes,
        items, total_cookies, subtotal_cents, tax_cents, total_cents,
-       week_start, payment_method, status
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+       week_start, pickup_location, payment_method, status
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
      RETURNING *`,
     [
       input.id,
@@ -147,6 +149,7 @@ export async function insertOrder(client: PoolClient, input: InsertOrderInput): 
       input.taxCents,
       input.totalCents,
       input.weekStart,
+      input.pickupLocation,
       input.paymentMethod,
       input.status,
     ]

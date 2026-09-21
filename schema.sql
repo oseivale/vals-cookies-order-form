@@ -30,6 +30,9 @@ CREATE TABLE IF NOT EXISTS orders (
   -- stored as a plain date for simple, indexable cap queries.
   week_start                  DATE NOT NULL,
 
+  -- Pickup
+  pickup_location              TEXT NOT NULL CHECK (pickup_location IN ('pickering', 'vaughan')),
+
   -- Payment
   payment_method               TEXT NOT NULL CHECK (payment_method IN ('stripe', 'etransfer')),
   status                       TEXT NOT NULL CHECK (

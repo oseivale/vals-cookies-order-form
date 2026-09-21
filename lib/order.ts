@@ -47,6 +47,7 @@ export const createOrderSchema = z.object({
   customer: customerDetailsSchema,
   items: z.array(orderItemSchema).min(1, "Add at least one pack to your order."),
   paymentMethod: z.enum(["stripe", "etransfer"]),
+  pickupLocation: z.enum(["pickering", "vaughan"]),
 });
 
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;

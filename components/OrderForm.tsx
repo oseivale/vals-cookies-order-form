@@ -6,12 +6,15 @@ import {
   BRAND,
   FLAVOURS,
   PACKS,
+  PICKUP_DAY,
+  PICKUP_LOCATIONS,
   TAX_LABEL,
   formatCents,
   getPack,
   type FlavourId,
   type PackId,
   type PaymentMethod,
+  type PickupLocationId,
 } from "@/lib/config";
 import { orderTaxCents, orderGrandTotalCents } from "@/lib/order";
 
@@ -56,6 +59,7 @@ export default function OrderForm() {
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("stripe");
+  const [pickupLocation, setPickupLocation] = useState<PickupLocationId>(PICKUP_LOCATIONS[0].id);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -141,6 +145,7 @@ export default function OrderForm() {
           customer: { name, email, phone, notes },
           items: packOrders.map((o) => ({ packId: o.packId, flavours: o.flavours })),
           paymentMethod,
+          pickupLocation,
         }),
       });
       const data = await res.json();
@@ -370,6 +375,36 @@ export default function OrderForm() {
         </div>
       </div>
 
+      {/* Pickup */}
+      <div className="rounded-xl2 border bg-white p-5 shadow-card" style={{ borderColor: BRAND.colors.light }}>
+        <h2 className="font-display text-lg font-semibold" style={{ color: BRAND.colors.dark }}>
+          Pickup
+        </h2>
+        <p className="mt-1 text-xs text-stone-500">
+          All pickups are on <strong style={{ color: BRAND.colors.dark }}>{PICKUP_DAY}</strong> — just choose your
+          location below.
+        </p>
+        <div className="mt-3 space-y-2">
+          {PICKUP_LOCATIONS.map((loc) => (
+            <label
+              key={loc.id}
+              className="flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3"
+              style={{ borderColor: pickupLocation === loc.id ? BRAND.colors.accent : BRAND.colors.light }}
+            >
+              <input
+                type="radio"
+                name="pickupLocation"
+                checked={pickupLocation === loc.id}
+                onChange={() => setPickupLocation(loc.id)}
+              />
+              <span className="text-sm font-medium text-stone-700">{loc.name}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Payment method */}
+
       {/* Payment method */}
       <div className="rounded-xl2 border bg-white p-5 shadow-card" style={{ borderColor: BRAND.colors.light }}>
         <h2 className="font-display text-lg font-semibold" style={{ color: BRAND.colors.dark }}>
@@ -422,8 +457,8 @@ export default function OrderForm() {
         {submitting
           ? "Placing your order…"
           : paymentMethod === "stripe"
-          ? `Continue to payment — ${formatCents(totalCents)}`
-          : `Place order — ${formatCents(totalCents)}`}
+            ? `Continue to payment — ${formatCents(totalCents)}`
+            : `Place order — ${formatCents(totalCents)}`}
       </button>
     </form>
   );

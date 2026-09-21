@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { customer, items, paymentMethod } = parsed.data;
+  const { customer, items, paymentMethod, pickupLocation } = parsed.data;
 
   // Belt-and-suspenders: re-validate every pack/flavour id server-side even
   // though zod already checked enum membership, so pricing is always derived
@@ -80,6 +80,7 @@ export async function POST(req: NextRequest) {
         taxCents,
         totalCents,
         weekStart,
+        pickupLocation,
         paymentMethod,
         status: initialStatus,
       });

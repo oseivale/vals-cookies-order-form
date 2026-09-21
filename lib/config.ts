@@ -5,6 +5,7 @@
 export type PackId = "two-of-a-kind" | "six-picks" | "friends-dozen";
 export type FlavourId = "classic-oatmeal" | "chocolate-chunk" | "chewy-almond";
 export type PaymentMethod = "stripe" | "etransfer";
+export type PickupLocationId = "pickering" | "vaughan";
 
 export interface PackDefinition {
   id: PackId;
@@ -69,8 +70,31 @@ export function getPack(id: string): PackDefinition | undefined {
   return PACKS.find((p) => p.id === id);
 }
 
+// export function getFlavour(id: string): FlavourDefinition | undefined {
+//   return FLAVOURS.find((f) => f.id === id);
+// }
 export function getFlavour(id: string): FlavourDefinition | undefined {
   return FLAVOURS.find((f) => f.id === id);
+}
+
+// ---- Pickup ----
+export interface PickupLocationDefinition {
+  id: PickupLocationId;
+  name: string;
+}
+
+export const PICKUP_LOCATIONS: PickupLocationDefinition[] = [
+  { id: "pickering", name: "Pickering" },
+  { id: "vaughan", name: "Vaughan" },
+];
+
+// Only one pickup day right now, so it's not a customer choice — just a
+// fixed value shown as info text on the form. If you ever go back to
+// multiple days, reintroduce a PICKUP_DAYS array + PickupDayId type here.
+export const PICKUP_DAY = "Fridays";
+
+export function getPickupLocation(id: string): PickupLocationDefinition | undefined {
+  return PICKUP_LOCATIONS.find((p) => p.id === id);
 }
 
 // ---- Weekly cap ----
@@ -89,15 +113,54 @@ export const TAX_RATE = 0.13; // 13% Ontario HST
 export const TAX_LABEL = "HST (13%)";
 
 // ---- Branding ----
+// export const BRAND = {
+//   name: "Val's Cookies & Treats",
+//   colors: {
+//     accent: "#fa945d", // primary / buttons / highlights
+//     light: "#eac394", // secondary / backgrounds / soft accents
+//     dark: "#996236", // text accents / borders / footer
+//   },
+//   welcomeMessage:
+//     "Hi there! We're so glad you stopped by. Every box is baked fresh, in small weekly batches — so once we hit our cap for the week, that's it until Monday. Build your box below.",
+// } as const;
+// ---- Branding ----
 export const BRAND = {
-  name: "Val's Cookies & Treats",
+  name: "Val's Cookies",
   colors: {
     accent: "#fa945d", // primary / buttons / highlights
     light: "#eac394", // secondary / backgrounds / soft accents
     dark: "#996236", // text accents / borders / footer
   },
+  welcomeHeading: "Freshly baked, just for you",
+  welcomeGreeting: "Hi there! We're so glad you stopped by.",
   welcomeMessage:
-    "Hi there! We're so glad you stopped by. Every box is baked fresh, in small weekly batches — so once we hit our cap for the week, that's it until Monday. Build your box below.",
+    "Every box of Val's Cookies is baked fresh in small weekly batches. We only take a limited number of orders each week, so once we hit our baking cap, orders will close until Monday!",
+  howItWorks: [
+    {
+      icon: "/icons/cookie.svg",
+      title: "Build your box",
+      description: "Choose your favourites and tell us how many you'd like.",
+    },
+    {
+      icon: "/icons/location.svg",
+      title: "Pickup only",
+      description:
+        "We currently offer local pickup in Pickering and Vaughan. You'll be able to select your preferred pickup location when placing your order.",
+    },
+    {
+      icon: "/icons/calendar.svg",
+      title: "Friday pickups",
+      description:
+        "Pickup details and your confirmed time will be provided with your order confirmation.",
+    },
+    {
+      icon: "/icons/heart.svg",
+      title: "Baked fresh each week",
+      description:
+        "Your cookies are prepared in small batches specifically for that week's orders — fresh, homemade and ready for you to enjoy.",
+    },
+  ],
+  welcomeClosing: "Ready for something sweet? Build your box below!",
 } as const;
 
 // ---- Money formatting ----
