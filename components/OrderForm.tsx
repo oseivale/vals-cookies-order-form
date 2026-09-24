@@ -204,13 +204,13 @@ export default function OrderForm() {
               className="rounded-xl2 border bg-white p-5 shadow-card"
               style={{ borderColor: BRAND.colors.light }}
             >
-              <div className="mb-4 flex items-start justify-between gap-3">
+              <div className="mb-4 flex flex-col md:flex-row items-start md:justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">Box {idx + 1}</p>
                   <select
                     value={order.packId}
                     onChange={(e) => changePackSize(order.uid, e.target.value as PackId)}
-                    className="mt-1 rounded-lg border px-3 py-2 font-display text-lg font-semibold"
+                    className="mt-1 rounded-lg border md:px-3 py-2 font-display text-lg font-semibold"
                     style={{ borderColor: BRAND.colors.light, color: BRAND.colors.dark }}
                   >
                     {PACKS.map((p) => (
@@ -225,7 +225,7 @@ export default function OrderForm() {
                   <button
                     type="button"
                     onClick={() => removePackOrder(order.uid)}
-                    className="text-xs font-medium text-stone-400 hover:text-stone-600"
+                    className="text-xs font-medium text-red-400 hover:text-stone-600"
                   >
                     Remove
                   </button>
