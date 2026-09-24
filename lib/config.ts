@@ -57,11 +57,11 @@ export const FLAVOURS: FlavourDefinition[] = [
     name: "Chocolate Chip",
     description: "Loaded with generous chunks of chocolate.",
   },
-  // {
-  //   id: "chewy-almond",
-  //   name: "Chewy Almond",
-  //   description: "Soft, nutty, and just the right amount of chewy.",
-  // },
+  {
+    id: "chewy-almond",
+    name: "Chewy Almond",
+    description: "Soft, nutty, and just the right amount of chewy.",
+  },
 ];
 
 export const FLAVOUR_IDS = FLAVOURS.map((f) => f.id) as FlavourId[];
