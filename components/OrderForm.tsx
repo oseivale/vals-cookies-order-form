@@ -210,7 +210,7 @@ export default function OrderForm() {
                   <select
                     value={order.packId}
                     onChange={(e) => changePackSize(order.uid, e.target.value as PackId)}
-                    className="mt-1 bg-white rounded-lg w-[100%] md:w-full border md:px-3 py-2 font-display text-sm md:text-lg font-semibold"
+                    className="mt-1 bg-white rounded-lg w-[100%] md:w-full border px-2 md:px-3 py-2 font-display text-sm md:text-lg font-semibold"
                     style={{ borderColor: BRAND.colors.light, color: BRAND.colors.dark }}
                   >
                     {PACKS.map((p) => (
