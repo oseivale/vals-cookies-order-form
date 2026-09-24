@@ -34,7 +34,8 @@ export const PACKS: PackDefinition[] = [
     name: "Six Picks",
     count: 6,
     priceCents: 1000,
-    tagline: "Our most popular box — perfect for sharing (or not).",
+    tagline: "Perfect for sharing (or not).",
+    // tagline: "Our most popular box — perfect for sharing (or not).",
   },
   {
     id: "friends-dozen",
@@ -53,14 +54,14 @@ export const FLAVOURS: FlavourDefinition[] = [
   },
   {
     id: "chocolate-chunk",
-    name: "Chocolate Chunk",
+    name: "Chocolate Chip",
     description: "Loaded with generous chunks of chocolate.",
   },
-  {
-    id: "chewy-almond",
-    name: "Chewy Almond",
-    description: "Soft, nutty, and just the right amount of chewy.",
-  },
+  // {
+  //   id: "chewy-almond",
+  //   name: "Chewy Almond",
+  //   description: "Soft, nutty, and just the right amount of chewy.",
+  // },
 ];
 
 export const FLAVOUR_IDS = FLAVOURS.map((f) => f.id) as FlavourId[];
