@@ -12,7 +12,8 @@ import { getPack, getFlavour, TAX_LABEL } from "@/lib/config";
 import { getTorontoWeekStart, hasRoomForLocked } from "@/lib/cap";
 import { insertOrder, setOrderStripeSession, withWeeklyCapLock, query, getPool, type OrderRow } from "@/lib/db";
 import { getStripe } from "@/lib/stripe";
-import { sendEtransferPendingEmail } from "@/lib/email";
+import { sendAdminOrderNotification, sendEtransferPendingEmail } from "@/lib/email";
+import { isOrderWindowOpen } from "@/lib/orderWindow";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,16 @@ function siteUrl(req: NextRequest): string {
 }
 
 export async function POST(req: NextRequest) {
+  // Belt-and-suspenders: the homepage already hides the form when preorders
+  // are closed, but that alone isn't enforcement — this check is what
+  // actually stops someone from placing an order by bypassing the UI.
+  if (!isOrderWindowOpen()) {
+    return NextResponse.json(
+      { error: "Preorders are currently closed. New preorders open Sunday at midnight." },
+      { status: 403 }
+    );
+  }
+
   let body: unknown;
   try {
     body = await req.json();
@@ -100,6 +111,15 @@ export async function POST(req: NextRequest) {
     }
     console.error("order insert failed", err);
     return NextResponse.json({ error: "Something went wrong placing your order. Please try again." }, { status: 500 });
+  }
+
+  // Best-effort: notify the admin the moment ANY order is submitted, before
+  // payment is confirmed either way — a failure here must never block the
+  // customer's order from completing.
+  try {
+    await sendAdminOrderNotification(insertedOrder);
+  } catch (err) {
+    console.error("Failed to send admin order notification for order", insertedOrder.id, err);
   }
 
   if (paymentMethod === "etransfer") {

@@ -1,7 +1,14 @@
 import OrderForm from "@/components/OrderForm";
 import { BRAND } from "@/lib/config";
+import { isOrderWindowOpen } from "@/lib/orderWindow";
+
+// Without this, Next.js could statically render this page once at build
+// time and bake in whatever open/closed state happened to be true then —
+// force-dynamic makes sure the check runs fresh on every request.
+export const dynamic = "force-dynamic";
 
 export default function HomePage() {
+  const ordersOpen = isOrderWindowOpen();
   return (
     <main className="mx-auto max-w-3xl px-4 py-10 sm:py-14">
       <header className="mb-10 text-center animate-fade-in">
@@ -62,7 +69,27 @@ export default function HomePage() {
         </p>
       </header>
 
-      <OrderForm />
+           {ordersOpen ? <OrderForm /> : <OrdersClosed />}
     </main>
+  );
+}
+
+function OrdersClosed() {
+  return (
+    <div
+      className="rounded-xl2 border bg-white p-8 text-center shadow-card animate-fade-in"
+      style={{ borderColor: BRAND.colors.light }}
+    >
+      <p className="text-4xl">🍪</p>
+      <h2 className="mt-3 font-display text-2xl font-semibold" style={{ color: BRAND.colors.dark }}>
+        Preorders are closed for now
+      </h2>
+      <p className="mx-auto mt-3 max-w-sm text-[15px] leading-relaxed text-stone-600">
+        We're baking and handing out this week's orders! New preorders open again{" "}
+        <strong style={{ color: BRAND.colors.dark }}>Sunday at midnight</strong> and close{" "}
+        <strong style={{ color: BRAND.colors.dark }}>Wednesday at 11:59pm</strong>, for pickup that same week.
+      </p>
+      <p className="mt-4 text-sm text-stone-400">Check back soon — we'd love to bake for you!</p>
+    </div>
   );
 }

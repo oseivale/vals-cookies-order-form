@@ -1,7 +1,7 @@
 import nodemailer from "nodemailer";
 import type { OrderRow } from "./db";
 import { orderReferenceCode, type OrderItem } from "./order";
-import { BRAND, TAX_LABEL, formatCents, getFlavour, getPack } from "./config";
+import { BRAND, TAX_LABEL, formatCents, getFlavour, getPack, getPickupLocation } from "./config";
 import { markConfirmationEmailSent } from "./db";
 
 // Nodemailer is configured to relay through Resend's SMTP endpoint. This
@@ -180,5 +180,66 @@ export async function sendEtransferPendingEmail(order: OrderRow, etransferEmail:
     to: order.customer_email,
     subject: `Action needed: send your e-Transfer to confirm your ${BRAND.name} order 🍪`,
     html: etransferPendingEmailHtml(order, etransferEmail),
+  });
+}
+
+function adminNotificationEmailHtml(order: OrderRow): string {
+  const pickupLocationName = getPickupLocation(order.pickup_location)?.name ?? order.pickup_location;
+  return `
+  <div style="font-family:Georgia,'Times New Roman',serif;background:#fdf6ee;padding:32px 16px;">
+    <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid ${BRAND.colors.light};">
+      <div style="background:${BRAND.colors.dark};padding:20px 32px;text-align:center;">
+        <h1 style="margin:0;color:#ffffff;font-size:18px;letter-spacing:0.5px;">🍪 New order submitted</h1>
+      </div>
+      <div style="padding:24px 32px;">
+        <table style="width:100%;border-collapse:collapse;font-size:14px;color:#3a332b;">
+          <tr><td style="padding:4px 0;color:#6b6257;">Reference</td><td style="padding:4px 0;text-align:right;font-weight:700;">${orderReferenceCode(order.id)}</td></tr>
+          <tr><td style="padding:4px 0;color:#6b6257;">Status</td><td style="padding:4px 0;text-align:right;">${order.status}</td></tr>
+          <tr><td style="padding:4px 0;color:#6b6257;">Payment method</td><td style="padding:4px 0;text-align:right;">${order.payment_method === "stripe" ? "Card (Stripe)" : "Interac e-Transfer"}</td></tr>
+          <tr><td style="padding:4px 0;color:#6b6257;">Pickup location</td><td style="padding:4px 0;text-align:right;">${pickupLocationName}</td></tr>
+          <tr><td style="padding:4px 0;color:#6b6257;">Customer</td><td style="padding:4px 0;text-align:right;">${order.customer_name}</td></tr>
+          <tr><td style="padding:4px 0;color:#6b6257;">Email</td><td style="padding:4px 0;text-align:right;">${order.customer_email}</td></tr>
+          <tr><td style="padding:4px 0;color:#6b6257;">Phone</td><td style="padding:4px 0;text-align:right;">${order.customer_phone || "—"}</td></tr>
+        </table>
+        <table style="width:100%;border-collapse:collapse;margin-top:16px;">
+          ${itemsHtml(order.items)}
+          <tr>
+            <td style="padding:10px 0 0;color:#6b6257;font-size:14px;">Subtotal</td>
+            <td style="padding:10px 0 0;text-align:right;color:#6b6257;font-size:14px;">${formatCents(order.subtotal_cents)}</td>
+          </tr>
+          <tr>
+            <td style="padding:2px 0 0;color:#6b6257;font-size:14px;">${TAX_LABEL}</td>
+            <td style="padding:2px 0 0;text-align:right;color:#6b6257;font-size:14px;">${formatCents(order.tax_cents)}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 0 0;font-weight:700;color:${BRAND.colors.dark};">Total</td>
+            <td style="padding:10px 0 0;text-align:right;font-weight:700;color:${BRAND.colors.dark};">${formatCents(order.total_cents)}</td>
+          </tr>
+        </table>
+        ${order.customer_notes ? `<p style="color:#3a332b;font-size:14px;line-height:1.6;margin-top:20px;"><strong>Order notes:</strong><br/>${order.customer_notes}</p>` : ""}
+        <p style="color:#6b6257;font-size:12px;line-height:1.6;margin-top:24px;">
+          Submitted ${new Date(order.created_at).toLocaleString("en-CA", { timeZone: "America/Toronto", dateStyle: "medium", timeStyle: "short" })} (Toronto time). Check /admin to track payment status.
+        </p>
+      </div>
+    </div>
+  </div>`;
+}
+
+// Fired the moment ANY order is submitted — Stripe or e-Transfer — before
+// payment is confirmed. This is an early-warning signal so you know to watch
+// for it in /admin, separate from the customer-facing emails. Skips quietly
+// if ADMIN_NOTIFICATION_EMAIL isn't configured, and must never block order
+// creation if sending fails.
+export async function sendAdminOrderNotification(order: OrderRow): Promise<void> {
+  const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL;
+  if (!adminEmail) return;
+
+  const fromAddress = process.env.FROM_EMAIL || `${BRAND.name} <orders@example.com>`;
+
+  await getTransporter().sendMail({
+    from: fromAddress,
+    to: adminEmail,
+    subject: `🍪 New order — ${BRAND.name} (${order.payment_method === "stripe" ? "Card" : "e-Transfer"}) — ${orderReferenceCode(order.id)}`,
+    html: adminNotificationEmailHtml(order),
   });
 }
