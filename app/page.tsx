@@ -74,22 +74,84 @@ export default function HomePage() {
   );
 }
 
+// function OrdersClosed() {
+//   return (
+//     <div
+//       className="rounded-xl2 border bg-white p-8 text-center shadow-card animate-fade-in"
+//       style={{ borderColor: BRAND.colors.light }}
+//     >
+//       <p className="text-4xl">🍪</p>
+//       <h2 className="mt-3 font-display text-2xl font-semibold" style={{ color: BRAND.colors.dark }}>
+//         Preorders are closed for now
+//       </h2>
+//       <p className="mx-auto mt-3 max-w-sm text-[15px] leading-relaxed text-stone-600">
+//         We're baking and handing out this week's orders! New preorders open again{" "}
+//         <strong style={{ color: BRAND.colors.dark }}>Sunday at midnight</strong> and close{" "}
+//         <strong style={{ color: BRAND.colors.dark }}>Wednesday at 11:59pm</strong>, for pickup that same week.
+//       </p>
+//       <p className="mt-4 text-sm text-stone-400">Check back soon — we'd love to bake for you!</p>
+//     </div>
+//   );
+// }
+
+function getNextOrderWindow() {
+  const today = new Date();
+
+  // Sunday = 0
+  const daysUntilSunday = (7 - today.getDay()) % 7;
+
+  const nextSunday = new Date(today);
+  nextSunday.setDate(today.getDate() + daysUntilSunday);
+
+  // Wednesday is 3 days after Sunday
+  const nextWednesday = new Date(nextSunday);
+  nextWednesday.setDate(nextSunday.getDate() + 3);
+
+  const formatDate = (date: Date) =>
+    new Intl.DateTimeFormat("en-CA", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+    }).format(date);
+
+  return {
+    sunday: formatDate(nextSunday),
+    wednesday: formatDate(nextWednesday),
+  };
+}
+
 function OrdersClosed() {
+  const { sunday, wednesday } = getNextOrderWindow();
+
   return (
     <div
       className="rounded-xl2 border bg-white p-8 text-center shadow-card animate-fade-in"
       style={{ borderColor: BRAND.colors.light }}
     >
-      <p className="text-4xl">🍪</p>
-      <h2 className="mt-3 font-display text-2xl font-semibold" style={{ color: BRAND.colors.dark }}>
+      <div className="flex justify-center h-10"><img src="/icons/cookie.svg" /></div>
+
+      <h2
+        className="mt-3 font-display text-2xl font-semibold"
+        style={{ color: BRAND.colors.dark }}
+      >
         Preorders are closed for now
       </h2>
+
       <p className="mx-auto mt-3 max-w-sm text-[15px] leading-relaxed text-stone-600">
         We're baking and handing out this week's orders! New preorders open again{" "}
-        <strong style={{ color: BRAND.colors.dark }}>Sunday at midnight</strong> and close{" "}
-        <strong style={{ color: BRAND.colors.dark }}>Wednesday at 11:59pm</strong>, for pickup that same week.
+        <strong style={{ color: BRAND.colors.dark }}>
+          {sunday} at midnight
+        </strong>{" "}
+        and close{" "}
+        <strong style={{ color: BRAND.colors.dark }}>
+          {wednesday} at 11:59pm
+        </strong>
+        , for pickup that same week.
       </p>
-      <p className="mt-4 text-sm text-stone-400">Check back soon — we'd love to bake for you!</p>
+
+      <p className="mt-4 text-sm text-stone-400">
+        Check back soon — we'd love to bake for you!
+      </p>
     </div>
   );
 }
