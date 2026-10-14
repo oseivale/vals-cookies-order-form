@@ -135,7 +135,7 @@ export const BRAND = {
   welcomeHeading: "Freshly baked, just for you",
   welcomeGreeting: "Hi there! We're so glad you stopped by.",
   welcomeMessage:
-    "Every box of Val's Cookies is baked fresh in small weekly batches. We only take a limited number of orders each week, so once we hit our baking cap, orders will close until Monday!",
+    "Every box of Val's Cookies is baked fresh in small weekly batches. We only take a limited number of orders each week, so once we hit our baking cap, orders will close until Sunday!",
   howItWorks: [
     {
       icon: "/icons/cookie.svg",
