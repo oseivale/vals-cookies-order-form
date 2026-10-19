@@ -2,7 +2,7 @@
 // weekly cookie cap. Both server (API routes) and client (form UI) import
 // from here so the numbers can never drift apart.
 
-export type PackId = "two-of-a-kind" | "six-picks" | "friends-dozen";
+export type PackId = "two-of-a-kind" | "six-picks" | "friends-dozen" | "event-box";
 export type FlavourId = "classic-oatmeal" | "chocolate-chunk" | "chewy-almond";
 export type PaymentMethod = "stripe" | "etransfer";
 export type PickupLocationId = "pickering" | "vaughan";
@@ -34,8 +34,7 @@ export const PACKS: PackDefinition[] = [
     name: "Six Picks",
     count: 6,
     priceCents: 1000,
-    tagline: "Perfect for sharing (or not).",
-    // tagline: "Our most popular box — perfect for sharing (or not).",
+    tagline: "Our most popular box — perfect for sharing (or not).",
   },
   {
     id: "friends-dozen",
@@ -43,6 +42,13 @@ export const PACKS: PackDefinition[] = [
     count: 12,
     priceCents: 1800,
     tagline: "A full dozen for the whole crew.",
+  },
+    {
+    id: "event-box",
+    name: "Event Box",
+    count: 30,
+    priceCents: 3700,
+    tagline: "Even more for your next big event.",
   },
 ];
 
@@ -76,6 +82,39 @@ export function getPack(id: string): PackDefinition | undefined {
 // }
 export function getFlavour(id: string): FlavourDefinition | undefined {
   return FLAVOURS.find((f) => f.id === id);
+}
+
+// ---- Banana Bread ----
+// A separate product line from cookie packs — no flavour selection, just a
+// size choice. Customers can order any quantity of each size.
+export type BananaBreadId = "banana-bread-3" | "banana-bread-6";
+
+export interface BananaBreadDefinition {
+  id: BananaBreadId;
+  name: string;
+  pieces: number;
+  priceCents: number;
+}
+
+export const BANANA_BREAD_OPTIONS: BananaBreadDefinition[] = [
+  {
+    id: "banana-bread-3",
+    name: "Banana Bread — 3 Pieces",
+    pieces: 3,
+    priceCents: 1000,
+  },
+  {
+    id: "banana-bread-6",
+    name: "Banana Bread — 6 Pieces",
+    pieces: 6,
+    priceCents: 1600,
+  },
+];
+
+export const BANANA_BREAD_IDS = BANANA_BREAD_OPTIONS.map((b) => b.id) as BananaBreadId[];
+
+export function getBananaBreadOption(id: string): BananaBreadDefinition | undefined {
+  return BANANA_BREAD_OPTIONS.find((b) => b.id === id);
 }
 
 // ---- Pickup ----
@@ -113,17 +152,6 @@ export const CAP_TIMEZONE = "America/Toronto";
 export const TAX_RATE = 0.13; // 13% Ontario HST
 export const TAX_LABEL = "HST (13%)";
 
-// ---- Branding ----
-// export const BRAND = {
-//   name: "Val's Cookies & Treats",
-//   colors: {
-//     accent: "#fa945d", // primary / buttons / highlights
-//     light: "#eac394", // secondary / backgrounds / soft accents
-//     dark: "#996236", // text accents / borders / footer
-//   },
-//   welcomeMessage:
-//     "Hi there! We're so glad you stopped by. Every box is baked fresh, in small weekly batches — so once we hit our cap for the week, that's it until Monday. Build your box below.",
-// } as const;
 // ---- Branding ----
 export const BRAND = {
   name: "Val's Cookies",

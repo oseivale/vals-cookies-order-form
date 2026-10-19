@@ -6,23 +6,37 @@ import {
   BRAND,
   FLAVOURS,
   PACKS,
+  BANANA_BREAD_OPTIONS,
   PICKUP_DAY,
   PICKUP_LOCATIONS,
   TAX_LABEL,
   formatCents,
   getPack,
+  getBananaBreadOption,
   type FlavourId,
   type PackId,
+  type BananaBreadId,
   type PaymentMethod,
   type PickupLocationId,
 } from "@/lib/config";
 import { orderTaxCents, orderGrandTotalCents } from "@/lib/order";
 
-interface PackOrder {
+type BoxKind = "cookie" | "banana-bread";
+
+interface CookieBoxEntry {
   uid: string;
+  kind: "cookie";
   packId: PackId;
   flavours: Record<FlavourId, number>;
 }
+
+interface BananaBreadBoxEntry {
+  uid: string;
+  kind: "banana-bread";
+  sizeId: BananaBreadId;
+}
+
+type BoxEntry = CookieBoxEntry | BananaBreadBoxEntry;
 
 interface CapStatus {
   weekStart: string;
@@ -35,25 +49,30 @@ function emptyFlavours(): Record<FlavourId, number> {
   return { "classic-oatmeal": 0, "chocolate-chunk": 0, "chewy-almond": 0 };
 }
 
-function makePackOrder(packId: PackId = "six-picks"): PackOrder {
+function makeCookieBox(packId: PackId = "six-picks"): CookieBoxEntry {
   const pack = getPack(packId)!;
   const flavours = emptyFlavours();
   // Friendly default: put the whole pack in the first flavour so the
   // customer starts from a valid, submittable state and only needs to
   // adjust if they want a mix.
   flavours["classic-oatmeal"] = pack.count;
-  return { uid: crypto.randomUUID(), packId, flavours };
+  return { uid: crypto.randomUUID(), kind: "cookie", packId, flavours };
 }
 
-function packCookieCount(order: PackOrder): number {
-  return Object.values(order.flavours).reduce((sum, n) => sum + n, 0);
+function makeBananaBreadBox(sizeId: BananaBreadId = BANANA_BREAD_OPTIONS[0].id): BananaBreadBoxEntry {
+  return { uid: crypto.randomUUID(), kind: "banana-bread", sizeId };
+}
+
+function boxCookieCount(box: BoxEntry): number {
+  if (box.kind !== "cookie") return 0;
+  return Object.values(box.flavours).reduce((sum, n) => sum + n, 0);
 }
 
 export default function OrderForm() {
   const router = useRouter();
   const [capStatus, setCapStatus] = useState<CapStatus | null>(null);
   const [capError, setCapError] = useState<string | null>(null);
-  const [packOrders, setPackOrders] = useState<PackOrder[]>([makePackOrder()]);
+  const [boxes, setBoxes] = useState<BoxEntry[]>([makeCookieBox()]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -79,57 +98,95 @@ export default function OrderForm() {
     };
   }, []);
 
-  const totalCookies = useMemo(() => packOrders.reduce((sum, o) => sum + packCookieCount(o), 0), [packOrders]);
-  const orderItems = useMemo(() => packOrders.map((o) => ({ packId: o.packId, flavours: o.flavours })), [packOrders]);
-  const subtotalCents = useMemo(
-    () => packOrders.reduce((sum, o) => sum + (getPack(o.packId)?.priceCents ?? 0), 0),
-    [packOrders]
+  const totalCookies = useMemo(() => boxes.reduce((sum, b) => sum + boxCookieCount(b), 0), [boxes]);
+
+  const orderItems = useMemo(
+    () =>
+      boxes
+        .filter((b): b is CookieBoxEntry => b.kind === "cookie")
+        .map((b) => ({ packId: b.packId, flavours: b.flavours })),
+    [boxes]
   );
-  const taxCents = useMemo(() => orderTaxCents(orderItems), [orderItems]);
-  const totalCents = useMemo(() => orderGrandTotalCents(orderItems), [orderItems]);
+
+  const bananaBreadItems = useMemo(
+    () =>
+      boxes
+        .filter((b): b is BananaBreadBoxEntry => b.kind === "banana-bread")
+        .map((b) => ({ id: b.sizeId, quantity: 1 })),
+    [boxes]
+  );
+
+  const subtotalCents = useMemo(
+    () =>
+      boxes.reduce((sum, b) => {
+        if (b.kind === "cookie") return sum + (getPack(b.packId)?.priceCents ?? 0);
+        return sum + (getBananaBreadOption(b.sizeId)?.priceCents ?? 0);
+      }, 0),
+    [boxes]
+  );
+
+  const taxCents = useMemo(() => orderTaxCents(orderItems, bananaBreadItems), [orderItems, bananaBreadItems]);
+  const totalCents = useMemo(() => orderGrandTotalCents(orderItems, bananaBreadItems), [orderItems, bananaBreadItems]);
 
   const soldOut = capStatus !== null && capStatus.remaining <= 0;
   const overCap = capStatus !== null && totalCookies > capStatus.remaining;
 
-  function updatePackOrder(uid: string, updater: (order: PackOrder) => PackOrder) {
-    setPackOrders((prev) => prev.map((o) => (o.uid === uid ? updater(o) : o)));
+  function updateBox(uid: string, updater: (box: BoxEntry) => BoxEntry) {
+    setBoxes((prev) => prev.map((b) => (b.uid === uid ? updater(b) : b)));
+  }
+
+  function changeBoxKind(uid: string, kind: BoxKind) {
+    setBoxes((prev) =>
+      prev.map((b) => {
+        if (b.uid !== uid) return b;
+        return kind === "cookie" ? { ...makeCookieBox(), uid } : { ...makeBananaBreadBox(), uid };
+      })
+    );
   }
 
   function changePackSize(uid: string, packId: PackId) {
-    setPackOrders((prev) => prev.map((o) => (o.uid === uid ? { ...makePackOrder(packId), uid } : o)));
+    setBoxes((prev) =>
+      prev.map((b) => (b.uid === uid && b.kind === "cookie" ? { ...makeCookieBox(packId), uid } : b))
+    );
+  }
+
+  function changeBananaBreadSize(uid: string, sizeId: BananaBreadId) {
+    setBoxes((prev) => prev.map((b) => (b.uid === uid && b.kind === "banana-bread" ? { ...b, sizeId } : b)));
   }
 
   function setFlavourCount(uid: string, flavourId: FlavourId, rawValue: number) {
-    updatePackOrder(uid, (order) => {
-      const pack = getPack(order.packId)!;
-      const others = Object.entries(order.flavours)
+    updateBox(uid, (box) => {
+      if (box.kind !== "cookie") return box;
+      const pack = getPack(box.packId)!;
+      const others = Object.entries(box.flavours)
         .filter(([id]) => id !== flavourId)
         .reduce((sum, [, n]) => sum + n, 0);
       const clamped = Math.max(0, Math.min(rawValue, pack.count - others));
-      return { ...order, flavours: { ...order.flavours, [flavourId]: clamped } };
+      return { ...box, flavours: { ...box.flavours, [flavourId]: clamped } };
     });
-  }
-
-  function addPackOrder() {
-    setPackOrders((prev) => [...prev, makePackOrder()]);
-  }
-
-  function removePackOrder(uid: string) {
-    setPackOrders((prev) => (prev.length > 1 ? prev.filter((o) => o.uid !== uid) : prev));
   }
 
   function setAllOneFlavour(uid: string, flavourId: FlavourId) {
-    updatePackOrder(uid, (order) => {
-      const pack = getPack(order.packId)!;
+    updateBox(uid, (box) => {
+      if (box.kind !== "cookie") return box;
+      const pack = getPack(box.packId)!;
       const flavours = emptyFlavours();
       flavours[flavourId] = pack.count;
-      return { ...order, flavours };
+      return { ...box, flavours };
     });
   }
 
-  const packsAreValid = packOrders.every((o) => packCookieCount(o) === getPack(o.packId)!.count);
+  function addBox(kind: BoxKind = "cookie") {
+    setBoxes((prev) => [...prev, kind === "cookie" ? makeCookieBox() : makeBananaBreadBox()]);
+  }
+
+  function removeBox(uid: string) {
+    setBoxes((prev) => (prev.length > 1 ? prev.filter((b) => b.uid !== uid) : prev));
+  }
+
+  const boxesAreValid = boxes.every((b) => (b.kind === "cookie" ? boxCookieCount(b) === getPack(b.packId)!.count : true));
   const canSubmit =
-    packsAreValid && name.trim() && /\S+@\S+\.\S+/.test(email) && !submitting && !soldOut && !overCap;
+    boxesAreValid && name.trim() && /\S+@\S+\.\S+/.test(email) && !submitting && !soldOut && !overCap;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -143,7 +200,8 @@ export default function OrderForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           customer: { name, email, phone, notes },
-          items: packOrders.map((o) => ({ packId: o.packId, flavours: o.flavours })),
+          items: orderItems,
+          bananaBread: bananaBreadItems,
           paymentMethod,
           pickupLocation,
         }),
@@ -193,38 +251,89 @@ export default function OrderForm() {
         )}
       </div>
 
-      {/* Pack orders */}
+      {/* Boxes */}
       <div className="space-y-6">
-        {packOrders.map((order, idx) => {
-          const pack = getPack(order.packId)!;
-          const count = packCookieCount(order);
+        {boxes.map((box, idx) => {
+          const isCookie = box.kind === "cookie";
+          const pack = isCookie ? getPack(box.packId)! : null;
+          const bananaBreadOption = !isCookie ? getBananaBreadOption(box.sizeId)! : null;
+          const count = isCookie ? boxCookieCount(box) : 0;
+
           return (
             <div
-              key={order.uid}
+              key={box.uid}
               className="rounded-xl2 border bg-white p-5 shadow-card"
               style={{ borderColor: BRAND.colors.light }}
             >
               <div className="mb-4 flex flex-col md:flex-row items-start md:justify-between gap-3">
-                <div>
+                <div className="w-full">
                   <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">Box {idx + 1}</p>
-                  <select
-                    value={order.packId}
-                    onChange={(e) => changePackSize(order.uid, e.target.value as PackId)}
-                    className="mt-1 bg-white rounded-lg w-[100%] md:w-full border px-2 md:px-3 py-2 font-display text-sm md:text-lg font-semibold"
-                    style={{ borderColor: BRAND.colors.light, color: BRAND.colors.dark }}
-                  >
-                    {PACKS.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} — {p.count} cookies — {formatCents(p.priceCents)}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="mt-1 text-xs text-stone-500">{pack.tagline}</p>
+
+                  <div className="mt-1 inline-flex rounded-lg border p-1" style={{ borderColor: BRAND.colors.light }}>
+                    <button
+                      type="button"
+                      onClick={() => changeBoxKind(box.uid, "cookie")}
+                      className="rounded-md px-3 py-1.5 text-xs font-semibold transition"
+                      style={{
+                        background: isCookie ? BRAND.colors.accent : "transparent",
+                        color: isCookie ? "#fff" : BRAND.colors.dark,
+                      }}
+                    >
+                      Cookies
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => changeBoxKind(box.uid, "banana-bread")}
+                      className="rounded-md px-3 py-1.5 text-xs font-semibold transition"
+                      style={{
+                        background: !isCookie ? BRAND.colors.accent : "transparent",
+                        color: !isCookie ? "#fff" : BRAND.colors.dark,
+                      }}
+                    >
+                      Banana Bread
+                    </button>
+                  </div>
+
+                  {isCookie ? (
+                    <>
+                      <select
+                        value={box.packId}
+                        onChange={(e) => changePackSize(box.uid, e.target.value as PackId)}
+                        className="mt-3 bg-white rounded-lg w-[100%] md:w-full border px-2 md:px-3 py-2 font-display text-sm md:text-lg font-semibold"
+                        style={{ borderColor: BRAND.colors.light, color: BRAND.colors.dark }}
+                      >
+                        {PACKS.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name} — {p.count} cookies — {formatCents(p.priceCents)}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-xs text-stone-500">{pack!.tagline}</p>
+                    </>
+                  ) : (
+                    <>
+                      <select
+                        value={box.sizeId}
+                        onChange={(e) => changeBananaBreadSize(box.uid, e.target.value as BananaBreadId)}
+                        className="mt-3 bg-white rounded-lg w-[100%] md:w-full border px-2 md:px-3 py-2 font-display text-sm md:text-lg font-semibold"
+                        style={{ borderColor: BRAND.colors.light, color: BRAND.colors.dark }}
+                      >
+                        {BANANA_BREAD_OPTIONS.map((opt) => (
+                          <option key={opt.id} value={opt.id}>
+                            {opt.name} — {formatCents(opt.priceCents)}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-xs text-stone-500">
+                        {bananaBreadOption!.pieces} pieces — {formatCents(bananaBreadOption!.priceCents)}
+                      </p>
+                    </>
+                  )}
                 </div>
-                {packOrders.length > 1 && (
+                {boxes.length > 1 && (
                   <button
                     type="button"
-                    onClick={() => removePackOrder(order.uid)}
+                    onClick={() => removeBox(box.uid)}
                     className="text-xs font-medium text-red-400 hover:text-stone-600"
                   >
                     Remove
@@ -232,59 +341,66 @@ export default function OrderForm() {
                 )}
               </div>
 
-              <div className="mb-2 flex flex-wrap gap-2">
-                {FLAVOURS.map((f) => (
-                  <button
-                    key={f.id}
-                    type="button"
-                    onClick={() => setAllOneFlavour(order.uid, f.id)}
-                    className="rounded-full border px-3 py-1 text-xs font-medium text-stone-600 hover:bg-stone-50"
-                    style={{ borderColor: BRAND.colors.light }}
-                  >
-                    All {f.name}
-                  </button>
-                ))}
-              </div>
-
-              <div className="space-y-2">
-                {FLAVOURS.map((f) => (
-                  <div key={f.id} className="flex items-center justify-between gap-3 rounded-lg bg-stone-50 px-3 py-2">
-                    <div>
-                      <p className="text-sm font-medium text-stone-700">{f.name}</p>
-                      <p className="text-xs text-stone-400">{f.description}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
+              {isCookie && (
+                <>
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    {FLAVOURS.map((f) => (
                       <button
+                        key={f.id}
                         type="button"
-                        aria-label={`Decrease ${f.name}`}
-                        onClick={() => setFlavourCount(order.uid, f.id, order.flavours[f.id] - 1)}
-                        className="h-7 w-7 rounded-full border text-stone-600 hover:bg-white"
+                        onClick={() => setAllOneFlavour(box.uid, f.id)}
+                        className="rounded-full border px-3 py-1 text-xs font-medium text-stone-600 hover:bg-stone-50"
                         style={{ borderColor: BRAND.colors.light }}
                       >
-                        −
+                        All {f.name}
                       </button>
-                      <span className="w-6 text-center text-sm font-semibold text-stone-700">
-                        {order.flavours[f.id]}
-                      </span>
-                      <button
-                        type="button"
-                        aria-label={`Increase ${f.name}`}
-                        onClick={() => setFlavourCount(order.uid, f.id, order.flavours[f.id] + 1)}
-                        className="h-7 w-7 rounded-full border text-stone-600 hover:bg-white"
-                        style={{ borderColor: BRAND.colors.light }}
-                      >
-                        +
-                      </button>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
 
-              <p
-                className={`mt-3 text-right text-xs font-medium ${count === pack.count ? "text-emerald-600" : "text-amber-600"}`}
-              >
-                {count} of {pack.count} cookies selected
-              </p>
+                  <div className="space-y-2">
+                    {FLAVOURS.map((f) => (
+                      <div
+                        key={f.id}
+                        className="flex items-center justify-between gap-3 rounded-lg bg-stone-50 px-3 py-2"
+                      >
+                        <div>
+                          <p className="text-sm font-medium text-stone-700">{f.name}</p>
+                          <p className="text-xs text-stone-400">{f.description}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            aria-label={`Decrease ${f.name}`}
+                            onClick={() => setFlavourCount(box.uid, f.id, box.flavours[f.id] - 1)}
+                            className="h-7 w-7 rounded-full border text-stone-600 hover:bg-white"
+                            style={{ borderColor: BRAND.colors.light }}
+                          >
+                            −
+                          </button>
+                          <span className="w-6 text-center text-sm font-semibold text-stone-700">
+                            {box.flavours[f.id]}
+                          </span>
+                          <button
+                            type="button"
+                            aria-label={`Increase ${f.name}`}
+                            onClick={() => setFlavourCount(box.uid, f.id, box.flavours[f.id] + 1)}
+                            className="h-7 w-7 rounded-full border text-stone-600 hover:bg-white"
+                            style={{ borderColor: BRAND.colors.light }}
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <p
+                    className={`mt-3 text-right text-xs font-medium ${count === pack!.count ? "text-emerald-600" : "text-amber-600"}`}
+                  >
+                    {count} of {pack!.count} cookies selected
+                  </p>
+                </>
+              )}
             </div>
           );
         })}
@@ -292,7 +408,7 @@ export default function OrderForm() {
 
       <button
         type="button"
-        onClick={addPackOrder}
+        onClick={() => addBox("cookie")}
         className="w-full rounded-xl2 border-2 border-dashed py-3 text-sm font-medium hover:bg-white"
         style={{ borderColor: BRAND.colors.light, color: BRAND.colors.dark }}
       >
@@ -305,6 +421,12 @@ export default function OrderForm() {
           <span className="text-stone-600">Total cookies</span>
           <span className="font-semibold text-stone-800">{totalCookies}</span>
         </div>
+        {bananaBreadItems.length > 0 && (
+          <div className="flex justify-between">
+            <span className="text-stone-600">Banana bread boxes</span>
+            <span className="font-semibold text-stone-800">{bananaBreadItems.length}</span>
+          </div>
+        )}
         <div className="mt-2 flex justify-between border-t pt-2" style={{ borderColor: BRAND.colors.light }}>
           <span className="text-stone-600">Subtotal</span>
           <span className="text-stone-700">{formatCents(subtotalCents)}</span>
@@ -402,8 +524,6 @@ export default function OrderForm() {
           ))}
         </div>
       </div>
-
-      {/* Payment method */}
 
       {/* Payment method */}
       <div className="rounded-xl2 border bg-white p-5 shadow-card" style={{ borderColor: BRAND.colors.light }}>

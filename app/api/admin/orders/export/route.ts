@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
             order.customer_name,
             order.customer_email,
             order.customer_phone || "",
-            orderItemsSummary(order.items),
+            orderItemsSummary(order.items, order.banana_bread),
             order.total_cookies,
             formatCents(order.subtotal_cents),
             formatCents(order.tax_cents),

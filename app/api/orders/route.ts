@@ -8,7 +8,7 @@ import {
   orderGrandTotalCents,
   orderTotalCookies,
 } from "@/lib/order";
-import { getPack, getFlavour, TAX_LABEL } from "@/lib/config";
+import { getPack, getFlavour, getBananaBreadOption, TAX_LABEL } from "@/lib/config";
 import { getTorontoWeekStart, hasRoomForLocked } from "@/lib/cap";
 import { insertOrder, setOrderStripeSession, withWeeklyCapLock, query, getPool, type OrderRow } from "@/lib/db";
 import { getStripe } from "@/lib/stripe";
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { customer, items, paymentMethod, pickupLocation } = parsed.data;
+  const { customer, items, bananaBread, paymentMethod, pickupLocation } = parsed.data;
 
   // Belt-and-suspenders: re-validate every pack/flavour id server-side even
   // though zod already checked enum membership, so pricing is always derived
@@ -64,10 +64,16 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  for (const bb of bananaBread) {
+    if (!getBananaBreadOption(bb.id)) {
+      return NextResponse.json({ error: `Unknown banana bread option: ${bb.id}` }, { status: 400 });
+    }
+  }
+
   const totalCookies = orderTotalCookies(items);
-  const subtotalCents = orderTotalCents(items);
-  const taxCents = orderTaxCents(items);
-  const totalCents = orderGrandTotalCents(items);
+  const subtotalCents = orderTotalCents(items, bananaBread);
+  const taxCents = orderTaxCents(items, bananaBread);
+  const totalCents = orderGrandTotalCents(items, bananaBread);
   const weekStart = getTorontoWeekStart();
   const orderId = randomUUID();
   const initialStatus = paymentMethod === "stripe" ? "pending_stripe" : "pending_etransfer";
@@ -86,6 +92,7 @@ export async function POST(req: NextRequest) {
         customerPhone: customer.phone,
         customerNotes: customer.notes,
         items,
+        bananaBread,
         totalCookies,
         subtotalCents,
         taxCents,
@@ -159,7 +166,7 @@ export async function POST(req: NextRequest) {
       mode: "payment",
       payment_method_types: ["card"],
       customer_email: customer.email,
-      line_items: [
+           line_items: [
         ...items.map((item) => {
           const pack = getPack(item.packId)!;
           return {
@@ -174,6 +181,17 @@ export async function POST(req: NextRequest) {
                   .map(([flavourId, qty]) => `${qty} × ${getFlavour(flavourId)?.name ?? flavourId}`)
                   .join(", "),
               },
+            },
+          };
+        }),
+        ...bananaBread.map((item) => {
+          const option = getBananaBreadOption(item.id)!;
+          return {
+            quantity: item.quantity,
+            price_data: {
+              currency: "cad",
+              unit_amount: option.priceCents,
+              product_data: { name: option.name },
             },
           };
         }),

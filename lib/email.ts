@@ -1,7 +1,7 @@
 import nodemailer from "nodemailer";
 import type { OrderRow } from "./db";
-import { orderReferenceCode, type OrderItem } from "./order";
-import { BRAND, TAX_LABEL, formatCents, getFlavour, getPack, getPickupLocation } from "./config";
+import { orderReferenceCode, type OrderItem, type BananaBreadOrderItem } from "./order";
+import { BRAND, TAX_LABEL, formatCents, getFlavour, getPack, getPickupLocation, getBananaBreadOption } from "./config";
 import { markConfirmationEmailSent } from "./db";
 
 // Nodemailer is configured to relay through Resend's SMTP endpoint. This
@@ -30,8 +30,8 @@ function getTransporter(): nodemailer.Transporter {
   return transporter;
 }
 
-function itemsHtml(items: OrderItem[]): string {
-  return items
+function itemsHtml(items: OrderItem[], bananaBread: BananaBreadOrderItem[] = []): string {
+  const packRows = items
     .map((item) => {
       const pack = getPack(item.packId);
       const flavourLines = Object.entries(item.flavours)
@@ -52,6 +52,27 @@ function itemsHtml(items: OrderItem[]): string {
         </tr>`;
     })
     .join("");
+
+  const bananaBreadRows = bananaBread
+    .filter((item) => item.quantity > 0)
+    .map((item) => {
+      const option = getBananaBreadOption(item.id);
+      const lineTotal = option ? option.priceCents * item.quantity : 0;
+      return `
+        <tr>
+          <td style="padding:12px 0;border-bottom:1px solid ${BRAND.colors.light};">
+            <div style="font-weight:600;color:${BRAND.colors.dark};font-size:15px;">
+              ${option?.name ?? item.id}${item.quantity > 1 ? ` <span style="font-weight:400;color:#6b6257;">× ${item.quantity}</span>` : ""}
+            </div>
+          </td>
+          <td style="padding:12px 0;border-bottom:1px solid ${BRAND.colors.light};text-align:right;font-weight:600;color:${BRAND.colors.dark};white-space:nowrap;">
+            ${option ? formatCents(lineTotal) : ""}
+          </td>
+        </tr>`;
+    })
+    .join("");
+
+  return packRows + bananaBreadRows;
 }
 
 function confirmationEmailHtml(order: OrderRow): string {
@@ -71,7 +92,7 @@ function confirmationEmailHtml(order: OrderRow): string {
           Here's a summary of your order:
         </p>
         <table style="width:100%;border-collapse:collapse;margin-top:16px;">
-          ${itemsHtml(order.items)}
+                    ${itemsHtml(order.items, order.banana_bread)}
           <tr>
             <td style="padding:10px 0 0;color:#6b6257;font-size:14px;">Subtotal</td>
             <td style="padding:10px 0 0;text-align:right;color:#6b6257;font-size:14px;">${formatCents(order.subtotal_cents)}</td>

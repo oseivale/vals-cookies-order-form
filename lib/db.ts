@@ -1,6 +1,5 @@
 import { Pool, type PoolClient, type QueryResultRow } from "pg";
-import type { OrderItem } from "./order";
-
+import type { OrderItem, BananaBreadOrderItem } from "./order";
 // Netlify Functions are stateless/short-lived, so we cache the Pool on the
 // global object to avoid opening a fresh connection (and exhausting Neon's
 // connection limit) on every invocation within the same warm container.
@@ -56,6 +55,7 @@ export interface OrderRow {
   customer_phone: string | null;
   customer_notes: string | null;
   items: OrderItem[];
+  banana_bread: BananaBreadOrderItem[];
   total_cookies: number;
   subtotal_cents: number;
   tax_cents: number;
@@ -119,6 +119,7 @@ export interface InsertOrderInput {
   customerPhone?: string;
   customerNotes?: string;
   items: OrderItem[];
+  bananaBread: BananaBreadOrderItem[];
   totalCookies: number;
   subtotalCents: number;
   taxCents: number;
@@ -130,12 +131,12 @@ export interface InsertOrderInput {
 }
 
 export async function insertOrder(client: PoolClient, input: InsertOrderInput): Promise<OrderRow> {
-  const result = await client.query<OrderRow>(
+   const result = await client.query<OrderRow>(
     `INSERT INTO orders (
        id, customer_name, customer_email, customer_phone, customer_notes,
-       items, total_cookies, subtotal_cents, tax_cents, total_cents,
+       items, banana_bread, total_cookies, subtotal_cents, tax_cents, total_cents,
        week_start, pickup_location, payment_method, status
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
      RETURNING *`,
     [
       input.id,
@@ -144,6 +145,7 @@ export async function insertOrder(client: PoolClient, input: InsertOrderInput): 
       input.customerPhone || null,
       input.customerNotes || null,
       JSON.stringify(input.items),
+      JSON.stringify(input.bananaBread),
       input.totalCookies,
       input.subtotalCents,
       input.taxCents,

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BRAND, TAX_LABEL, formatCents, getPickupLocation } from "@/lib/config";
 import { orderItemsSummary } from "@/lib/order";
-import type { OrderItem } from "@/lib/order";
+import type { OrderItem, BananaBreadOrderItem } from "@/lib/order";
 
 export interface AdminOrder {
   id: string;
@@ -13,6 +13,7 @@ export interface AdminOrder {
   customer_email: string;
   customer_phone: string | null;
   items: OrderItem[];
+  banana_bread: BananaBreadOrderItem[];
   total_cookies: number;
   subtotal_cents: number;
   tax_cents: number;
@@ -224,7 +225,7 @@ function OrderCard({
         </span>
       </div>
 
-      <p className="mt-2 text-sm text-stone-600">{orderItemsSummary(order.items)}</p>
+            <p className="mt-2 text-sm text-stone-600">{orderItemsSummary(order.items, order.banana_bread)}</p>
 
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm">
         <span className="text-stone-500">
@@ -326,7 +327,7 @@ function OrderTable({
                   </>
                 ) : null}
               </Td>
-              <Td className="max-w-[240px] text-xs text-stone-600">{orderItemsSummary(order.items)}</Td>
+              <Td className="max-w-[240px] text-xs text-stone-600">{orderItemsSummary(order.items, order.banana_bread)}</Td>              <Td className="max-w-[240px] text-xs text-stone-600">{orderItemsSummary(order.items)}</Td>
               <Td align="right">{order.total_cookies}</Td>
               <Td align="right">{formatCents(order.subtotal_cents)}</Td>
               <Td align="right">{formatCents(order.tax_cents)}</Td>

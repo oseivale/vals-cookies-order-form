@@ -1,0 +1,1 @@
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS banana_bread JSONB NOT NULL DEFAULT '[]'::jsonb;
